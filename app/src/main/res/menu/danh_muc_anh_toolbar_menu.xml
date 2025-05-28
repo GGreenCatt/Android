@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search_albums"
+        android:icon="@drawable/ic_search_24"
+        android:title="Tìm kiếm Album"
+        app:showAsAction="ifRoom|collapseActionView"
+        app:actionViewClass="androidx.appcompat.widget.SearchView" />
+
+    <item
+        android:id="@+id/action_sort_albums"
+        android:icon="@drawable/ic_sort_24"
+        android:title="Sắp xếp Album"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_view_favorite_photos"
+        android:icon="@drawable/ic_favorite_list_24" android:title="Ảnh yêu thích"
+        app:showAsAction="ifRoom" />
+</menu>

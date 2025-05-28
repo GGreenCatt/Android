@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100pt"
+        android:text="Chào mừng đến với phần mềm quản lý ảnh"
+        android:textAlignment="center"
+        android:textColor="#CDDC39"
+        android:textSize="34sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/batdau"
+        android:layout_width="279dp"
+        android:layout_height="104dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="30pt"
+        android:backgroundTint="#7C8BC34A"
+        android:text="Bắt đầu"
+        android:textSize="20pt" />
+</LinearLayout>
