@@ -39,6 +39,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    implementation(libs.swipeRefreshLayout)
 
     // Thêm dòng này để implement Glide:
     implementation(libs.glide)

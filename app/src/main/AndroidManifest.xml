@@ -49,6 +49,13 @@
             android:name="android.support.PARENT_ACTIVITY"
             android:value=".DanhMucAnh" />
         </activity>
+        <activity
+            android:name=".HiddenAlbumsActivity"
+            android:label="Album Ẩn"
+            android:parentActivityName=".DanhMucAnh"> <meta-data
+            android:name="android.support.PARENT_ACTIVITY"
+            android:value=".DanhMucAnh" />
+        </activity>
         <activity android:name=".ViewPhotoActivity" android:exported="false" />
     </application>
 

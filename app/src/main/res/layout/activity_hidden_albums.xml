@@ -3,42 +3,39 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".DanhMucAnh">
+    android:fitsSystemWindows="true"
+    tools:context=".HiddenAlbumsActivity">
 
     <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true">
 
         <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+            android:id="@+id/toolbar_hidden_albums"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Danh Mục Ảnh"
-            style="@style/Widget.MaterialComponents.Toolbar.Primary"
-            app:menu="@menu/danh_muc_anh_toolbar_menu" />
-
+            app:title="Album Ẩn" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_view_albums"
+        android:id="@+id/recycler_view_hidden_albums"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingTop="8dp"
-        android:paddingBottom="72dp"
+        android:padding="8dp"
         android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_them_album"
+
+    <TextView
+        android:id="@+id/tv_no_hidden_albums"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:contentDescription="Thêm Album"
-        app:srcCompat="@drawable/baseline_add_24" />
+        android:text="Chưa có album ẩn nào."
+        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        tools:visibility="visible"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

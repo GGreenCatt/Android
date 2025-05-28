@@ -3,7 +3,10 @@
     <item
         android:id="@+id/menu_album_edit"
         android:title="Sửa thông tin Album" />
+
     <item
-        android:id="@+id/menu_album_delete"
-        android:title="Xóa Album" />
+        android:id="@+id/menu_album_toggle_hidden"
+        android:title="Ẩn Album" /> <item
+    android:id="@+id/menu_album_delete"
+    android:title="Xóa Album" />
 </menu>

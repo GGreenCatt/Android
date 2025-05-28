@@ -17,6 +17,12 @@
 
     <item
         android:id="@+id/action_view_favorite_photos"
-        android:icon="@drawable/ic_favorite_list_24" android:title="Ảnh yêu thích"
+        android:icon="@drawable/ic_favorite_list_24"
+        android:title="Ảnh yêu thích"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_access_hidden_section"
+        android:icon="@drawable/ic_lock_24" android:title="Mục ẩn"
         app:showAsAction="ifRoom" />
 </menu>

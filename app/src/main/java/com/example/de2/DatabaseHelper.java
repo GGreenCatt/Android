@@ -14,11 +14,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "DatabaseHelper";
 
     private static final String DATABASE_NAME = "AlbumDB.db";
-    private static final int DATABASE_VERSION = 5; // Giữ nguyên version 5
+    private static final int DATABASE_VERSION = 6; // Giữ nguyên version 6
 
     // Bảng albums
     private static final String TABLE_ALBUMS = "albums";
-    // Các cột: id, name, topic, image
+    public static final String COLUMN_ALBUM_IS_HIDDEN = "is_hidden";
 
     // Bảng photos
     private static final String TABLE_PHOTOS = "photos";
@@ -45,9 +45,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "name TEXT, " +
                 "topic TEXT, " +
-                "image BLOB)";
+                "image BLOB, " +
+                COLUMN_ALBUM_IS_HIDDEN + " INTEGER DEFAULT 0)";
         db.execSQL(createTableAlbums);
-        Log.d(TAG, "onCreate: Table " + TABLE_ALBUMS + " created.");
+        Log.d(TAG, "onCreate: Table " + TABLE_ALBUMS + " created with is_hidden column.");
 
         String createTablePhotos = "CREATE TABLE IF NOT EXISTS " + TABLE_PHOTOS + " (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -72,30 +73,46 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
-        // Với version 5, nếu bạn nâng cấp từ version < 5 và muốn giữ dữ liệu,
-        // bạn cần ALTER TABLE photos ADD COLUMN is_favorite.
-        // Hiện tại, logic này sẽ xóa và tạo lại.
-        if (oldVersion < 5 && newVersion == 5) {
-            // Đây là nơi bạn có thể thêm lệnh ALTER TABLE nếu muốn giữ dữ liệu cũ
-            // Ví dụ:
-            // try {
-            //    if (oldVersion < 4) { // Nếu chưa có bảng comments
-            //        // Tạo bảng comments (logic từ onCreate)
-            //        String createTableComments = "CREATE TABLE IF NOT EXISTS " + TABLE_COMMENTS + " ( ... )";
-            //        db.execSQL(createTableComments);
-            //    }
-            //    db.execSQL("ALTER TABLE " + TABLE_PHOTOS + " ADD COLUMN " + COLUMN_PHOTO_IS_FAVORITE + " INTEGER DEFAULT 0;");
-            //    Log.i(TAG, "Upgraded " + TABLE_PHOTOS + " table to version " + newVersion + " by adding " + COLUMN_PHOTO_IS_FAVORITE + " column.");
-            // } catch (Exception e) {
-            //    Log.e(TAG, "Error upgrading database, falling back to drop/create", e);
-            //    fallbackToDropAndCreate(db); // Nếu lỗi thì xóa và tạo lại
-            // }
-            // Nếu bạn chọn cách đơn giản là xóa và tạo lại cho mọi nâng cấp version:
-            fallbackToDropAndCreate(db);
+        if (oldVersion < 6 && newVersion >= 6) { // >=6 để xử lý nếu có version 7,8 sau này
+            try {
+                // Chỉ thêm cột nếu nó chưa tồn tại (kiểm tra cẩn thận nếu có nhiều version)
+                // Cách đơn giản nhất là thử thêm, nếu lỗi thì có thể cột đã tồn tại
+                // Hoặc, nếu đây là bước nâng cấp cụ thể từ version X (chưa có cột) sang Y (có cột)
+                Cursor c = db.rawQuery("PRAGMA table_info(" + TABLE_ALBUMS + ")", null);
+                boolean columnExists = false;
+                if (c != null) {
+                    while (c.moveToNext()) {
+                        int nameColIdx = c.getColumnIndex("name");
+                        if (nameColIdx != -1 && COLUMN_ALBUM_IS_HIDDEN.equalsIgnoreCase(c.getString(nameColIdx))) {
+                            columnExists = true;
+                            break;
+                        }
+                    }
+                    c.close();
+                }
+
+                if (!columnExists) {
+                    db.execSQL("ALTER TABLE " + TABLE_ALBUMS + " ADD COLUMN " + COLUMN_ALBUM_IS_HIDDEN + " INTEGER DEFAULT 0;");
+                    Log.i(TAG, "Upgraded " + TABLE_ALBUMS + " table: Added " + COLUMN_ALBUM_IS_HIDDEN + " column.");
+                } else {
+                    Log.i(TAG, COLUMN_ALBUM_IS_HIDDEN + " column already exists in " + TABLE_ALBUMS + " table.");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error adding " + COLUMN_ALBUM_IS_HIDDEN + " column to " + TABLE_ALBUMS + " during upgrade. Falling back to drop/create.", e);
+                fallbackToDropAndCreate(db); // Nếu ALTER TABLE lỗi, fallback về xóa và tạo lại
+                return;
+            }
         } else {
-            // Xử lý các kịch bản nâng cấp khác nếu có
-            fallbackToDropAndCreate(db);
+            // Nếu không có logic nâng cấp cụ thể cho các phiên bản này,
+            // hoặc nếu oldVersion >= 6 (schema đã có is_hidden trong albums rồi)
+            // thì không làm gì ở đây, hoặc nếu cần cho các version sau thì thêm logic
+            // Trong trường hợp này, nếu không có thay đổi nào khác, không cần gọi fallback
+            // fallbackToDropAndCreate(db); // Chỉ gọi nếu thực sự cần thiết cho các version khác
         }
+        // Nếu có các thay đổi schema khác cho các version cũ hơn (ví dụ version 4 lên 5 thêm is_favorite vào photos)
+        // thì bạn cần xử lý chúng tuần tự ở đây.
+        // Ví dụ:
+        // if (oldVersion < 5) { ... logic cho is_favorite ... }
     }
 
     private void fallbackToDropAndCreate(SQLiteDatabase db) {
@@ -106,14 +123,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public boolean insertAlbum(String name, String topic, byte[] image) {
+
+    public boolean insertAlbum(String name, String topic, byte[] image, boolean isHidden) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put("name", name);
         values.put("topic", topic);
         values.put("image", image);
+        values.put(COLUMN_ALBUM_IS_HIDDEN, isHidden ? 1 : 0);
         long result = db.insert(TABLE_ALBUMS, null, values);
         return result != -1;
+    }
+
+    public boolean insertAlbum(String name, String topic, byte[] image) {
+        return insertAlbum(name, topic, image, false);
     }
 
     public boolean insertImage(int albumId, byte[] image, boolean isFavorite) {
@@ -136,9 +159,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(albumId)});
         int totalImages = 0;
         if (cursor != null) {
-            if (cursor.moveToFirst()) {
-                totalImages = cursor.getInt(0);
-            }
+            if (cursor.moveToFirst()) { totalImages = cursor.getInt(0); }
             cursor.close();
         }
         return totalImages;
@@ -160,29 +181,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<Comment> comments = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = null;
-        Log.d(TAG, "Getting comments for photoId: " + photoId);
         try {
-            cursor = db.query(
-                    TABLE_COMMENTS, null, COLUMN_COMMENT_PHOTO_ID_FK + " = ?",
-                    new String[]{String.valueOf(photoId)}, null, null, COLUMN_COMMENT_TIMESTAMP + " ASC"
-            );
+            cursor = db.query(TABLE_COMMENTS, null, COLUMN_COMMENT_PHOTO_ID_FK + " = ?",
+                    new String[]{String.valueOf(photoId)}, null, null, COLUMN_COMMENT_TIMESTAMP + " ASC");
             if (cursor != null && cursor.moveToFirst()) {
                 int idCol = cursor.getColumnIndexOrThrow(COLUMN_COMMENT_ID_PK);
                 int textCol = cursor.getColumnIndexOrThrow(COLUMN_COMMENT_TEXT);
                 int authorCol = cursor.getColumnIndexOrThrow(COLUMN_COMMENT_AUTHOR);
                 int timestampCol = cursor.getColumnIndexOrThrow(COLUMN_COMMENT_TIMESTAMP);
                 do {
-                    int id = cursor.getInt(idCol);
-                    String text = cursor.getString(textCol);
-                    String author = cursor.getString(authorCol);
-                    long timestamp = cursor.getLong(timestampCol);
-                    comments.add(new Comment(id, photoId, text, author, timestamp));
+                    comments.add(new Comment(cursor.getInt(idCol), photoId, cursor.getString(textCol), cursor.getString(authorCol), cursor.getLong(timestampCol)));
                 } while (cursor.moveToNext());
-                Log.d(TAG, "Found " + comments.size() + " comments for photoId: " + photoId);
-            } else {
-                Log.d(TAG, "No comments found or cursor is null for photoId: " + photoId);
             }
-        } catch (Exception e) { Log.e(TAG, "Lỗi khi lấy bình luận: ", e); }
+        } catch (Exception e) { Log.e(TAG, "Lỗi khi lấy bình luận: " + photoId, e); }
         finally { if (cursor != null) { cursor.close(); } }
         return comments;
     }
@@ -190,15 +201,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean deleteAlbum(int albumId) {
         SQLiteDatabase db = this.getWritableDatabase();
         boolean success = false;
-        Log.d(TAG, "Attempting to delete album with ID: " + albumId);
         try {
             db.beginTransaction();
             int rowsAffected = db.delete(TABLE_ALBUMS, "id = ?", new String[]{String.valueOf(albumId)});
-            if (rowsAffected > 0) {
-                db.setTransactionSuccessful(); success = true;
-                Log.d(TAG, "Successfully deleted album ID: " + albumId);
-            } else { Log.w(TAG, "No album found with ID: " + albumId + " to delete.");}
-        } catch (Exception e) { Log.e(TAG, "Error deleting album ID: " + albumId, e); }
+            if (rowsAffected > 0) { db.setTransactionSuccessful(); success = true; }
+        } catch (Exception e) { Log.e(TAG, "Lỗi xóa album: " + albumId, e); }
         finally { db.endTransaction(); }
         return success;
     }
@@ -210,13 +217,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (newName != null) { values.put("name", newName); hasChanges = true; }
         if (newTopic != null) { values.put("topic", newTopic); hasChanges = true; }
         if (newImage != null && newImage.length > 0) { values.put("image", newImage); hasChanges = true; }
-        if (!hasChanges) { Log.d(TAG, "Không có thông tin cập nhật cho album ID: " + albumId); return false; }
-        Log.d(TAG, "Đang cập nhật album ID: " + albumId + " với: " + values.toString());
+        if (!hasChanges) return false;
         int rowsAffected = 0;
         try { rowsAffected = db.update(TABLE_ALBUMS, values, "id = ?", new String[]{String.valueOf(albumId)}); }
-        catch (Exception e) { Log.e(TAG, "Lỗi khi cập nhật album ID: " + albumId, e); return false; }
-        if (rowsAffected > 0) { Log.d(TAG, "Cập nhật thành công album ID: " + albumId); return true; }
-        else { Log.w(TAG, "Không có album được cập nhật cho ID: " + albumId); return false; }
+        catch (Exception e) { Log.e(TAG, "Lỗi cập nhật album: " + albumId, e); return false; }
+        return rowsAffected > 0;
     }
 
     public byte[] getAlbumCoverImage(int albumId) {
@@ -228,31 +233,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 int imageCol = cursor.getColumnIndexOrThrow("image");
                 if (!cursor.isNull(imageCol)) { imageBytes = cursor.getBlob(imageCol); }
             }
-        } catch (Exception e) { Log.e(TAG, "Lỗi lấy ảnh bìa cho album ID: " + albumId, e); }
+        } catch (Exception e) { Log.e(TAG, "Lỗi lấy ảnh bìa album: " + albumId, e); }
         finally { if (cursor != null) { cursor.close(); } }
         return imageBytes;
     }
-
-    // ===== PHƯƠNG THỨC CHO TÍNH NĂNG "YÊU THÍCH" =====
 
     public boolean setPhotoFavoriteStatus(int photoId, boolean isFavorite) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_PHOTO_IS_FAVORITE, isFavorite ? 1 : 0);
-        Log.d(TAG, "Setting favorite status for photoId " + photoId + " to " + isFavorite);
         int rowsAffected = 0;
-        try {
-            rowsAffected = db.update(TABLE_PHOTOS, values, "id = ?", new String[]{String.valueOf(photoId)});
-        } catch (Exception e) { Log.e(TAG, "Lỗi khi cập nhật trạng thái yêu thích cho ảnh ID: " + photoId, e); return false; }
-        if (rowsAffected > 0) { Log.d(TAG, "Cập nhật trạng thái yêu thích thành công cho ảnh ID: " + photoId); return true; }
-        else { Log.w(TAG, "Không cập nhật được TT yêu thích cho ảnh ID: " + photoId + ". Ảnh không tồn tại hoặc TT không đổi."); return false; }
+        try { rowsAffected = db.update(TABLE_PHOTOS, values, "id = ?", new String[]{String.valueOf(photoId)}); }
+        catch (Exception e) { Log.e(TAG, "Lỗi cập nhật TT yêu thích ảnh: " + photoId, e); return false; }
+        return rowsAffected > 0;
     }
 
     public List<Photo> getFavoritePhotos() {
         List<Photo> favoritePhotos = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = null;
-        Log.d(TAG, "Đang lấy danh sách ảnh yêu thích...");
         try {
             cursor = db.query(TABLE_PHOTOS, null, COLUMN_PHOTO_IS_FAVORITE + " = ?",
                     new String[]{"1"}, null, null, "id DESC");
@@ -262,51 +261,105 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 int imageCol = cursor.getColumnIndexOrThrow("image");
                 int isFavoriteCol = cursor.getColumnIndexOrThrow(COLUMN_PHOTO_IS_FAVORITE);
                 do {
-                    int id = cursor.getInt(idCol);
-                    int albumId = cursor.getInt(albumIdCol);
-                    byte[] image = cursor.getBlob(imageCol);
-                    boolean isFavorite = cursor.getInt(isFavoriteCol) == 1;
-                    Photo photo = new Photo(id, albumId, "Ảnh ID " + id, image, isFavorite); // Dùng constructor có isFavorite
-                    favoritePhotos.add(photo);
+                    favoritePhotos.add(new Photo(cursor.getInt(idCol), cursor.getInt(albumIdCol), "Ảnh ID " + cursor.getInt(idCol), cursor.getBlob(imageCol), cursor.getInt(isFavoriteCol) == 1));
                 } while (cursor.moveToNext());
-                Log.d(TAG, "Tìm thấy " + favoritePhotos.size() + " ảnh yêu thích.");
-            } else { Log.d(TAG, "Không tìm thấy ảnh yêu thích nào hoặc cursor rỗng."); }
-        } catch (Exception e) { Log.e(TAG, "Lỗi khi lấy danh sách ảnh yêu thích: ", e); }
+            }
+        } catch (Exception e) { Log.e(TAG, "Lỗi lấy ảnh yêu thích", e); }
         finally { if (cursor != null) { cursor.close(); } }
         return favoritePhotos;
     }
 
-    /**
-     * Kiểm tra xem một ảnh cụ thể có được đánh dấu là yêu thích không.
-     * @param photoId ID của ảnh cần kiểm tra.
-     * @return true nếu ảnh được yêu thích, false nếu không hoặc không tìm thấy ảnh.
-     */
     public boolean isPhotoFavorite(int photoId) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = null;
-        boolean favorite = false;
-        Log.d(TAG, "Kiểm tra trạng thái yêu thích cho photoId: " + photoId);
+        Cursor cursor = null; boolean favorite = false;
         try {
-            cursor = db.query(TABLE_PHOTOS,
-                    new String[]{COLUMN_PHOTO_IS_FAVORITE},
-                    "id = ?",
-                    new String[]{String.valueOf(photoId)},
-                    null, null, null);
-
+            cursor = db.query(TABLE_PHOTOS, new String[]{COLUMN_PHOTO_IS_FAVORITE}, "id = ?",
+                    new String[]{String.valueOf(photoId)}, null, null, null);
             if (cursor != null && cursor.moveToFirst()) {
                 int favoriteCol = cursor.getColumnIndexOrThrow(COLUMN_PHOTO_IS_FAVORITE);
                 favorite = cursor.getInt(favoriteCol) == 1;
-                Log.d(TAG, "Trạng thái yêu thích cho photoId " + photoId + " là: " + favorite);
-            } else {
-                Log.d(TAG, "Không tìm thấy ảnh hoặc cursor rỗng cho photoId: " + photoId + " khi kiểm tra yêu thích.");
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Lỗi khi kiểm tra isPhotoFavorite cho photoId: " + photoId, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
+        } catch (Exception e) { Log.e(TAG, "Lỗi kiểm tra ảnh yêu thích: " + photoId, e); }
+        finally { if (cursor != null) { cursor.close(); } }
         return favorite;
+    }
+
+    public boolean setAlbumHiddenStatus(int albumId, boolean isHidden) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ALBUM_IS_HIDDEN, isHidden ? 1 : 0);
+        Log.d(TAG, "Setting hidden status for albumId " + albumId + " to " + isHidden);
+        int rowsAffected = 0;
+        try { rowsAffected = db.update(TABLE_ALBUMS, values, "id = ?", new String[]{String.valueOf(albumId)}); }
+        catch (Exception e) { Log.e(TAG, "Lỗi khi cập nhật trạng thái ẩn cho album ID: " + albumId, e); return false; }
+        return rowsAffected > 0;
+    }
+
+    public List<Album> getVisibleAlbums() {
+        List<Album> albumList = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT id, name, topic, image, " + COLUMN_ALBUM_IS_HIDDEN +
+                " FROM " + TABLE_ALBUMS +
+                " WHERE " + COLUMN_ALBUM_IS_HIDDEN + " = 0 " +
+                " ORDER BY name ASC";
+        Cursor cursor = db.rawQuery(query, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                int idCol = cursor.getColumnIndexOrThrow("id");
+                int nameCol = cursor.getColumnIndexOrThrow("name");
+                int topicCol = cursor.getColumnIndexOrThrow("topic");
+                int imageCol = cursor.getColumnIndexOrThrow("image");
+                int isHiddenCol = cursor.getColumnIndexOrThrow(COLUMN_ALBUM_IS_HIDDEN); // Lấy index
+
+                int id = cursor.getInt(idCol);
+                String name = cursor.getString(nameCol);
+                String topic = cursor.getString(topicCol);
+                byte[] image = cursor.getBlob(imageCol);
+                boolean isHidden = cursor.getInt(isHiddenCol) == 1; // Đọc giá trị isHidden
+
+                int totalImages = getTotalImages(id);
+                // Sử dụng constructor của Album đã có isHidden
+                Album album = new Album(id, name, topic, image, isHidden);
+                album.setTotalImages(totalImages);
+                albumList.add(album);
+            } while (cursor.moveToNext());
+        }
+        if (cursor != null) { cursor.close(); }
+        Log.d(TAG, "getVisibleAlbums: Loaded " + albumList.size() + " visible albums.");
+        return albumList;
+    }
+
+    public List<Album> getHiddenAlbums() {
+        List<Album> albumList = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT id, name, topic, image, " + COLUMN_ALBUM_IS_HIDDEN +
+                " FROM " + TABLE_ALBUMS +
+                " WHERE " + COLUMN_ALBUM_IS_HIDDEN + " = 1 " +
+                " ORDER BY name ASC";
+        Cursor cursor = db.rawQuery(query, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                int idCol = cursor.getColumnIndexOrThrow("id");
+                int nameCol = cursor.getColumnIndexOrThrow("name");
+                int topicCol = cursor.getColumnIndexOrThrow("topic");
+                int imageCol = cursor.getColumnIndexOrThrow("image");
+                int isHiddenCol = cursor.getColumnIndexOrThrow(COLUMN_ALBUM_IS_HIDDEN); // Lấy index
+
+                int id = cursor.getInt(idCol);
+                String name = cursor.getString(nameCol);
+                String topic = cursor.getString(topicCol);
+                byte[] image = cursor.getBlob(imageCol);
+                boolean isHidden = cursor.getInt(isHiddenCol) == 1; // Đọc giá trị isHidden (sẽ là true)
+
+                int totalImages = getTotalImages(id);
+                // Sử dụng constructor của Album đã có isHidden
+                Album album = new Album(id, name, topic, image, isHidden);
+                album.setTotalImages(totalImages);
+                albumList.add(album);
+            } while (cursor.moveToNext());
+        }
+        if (cursor != null) { cursor.close(); }
+        Log.d(TAG, "getHiddenAlbums: Loaded " + albumList.size() + " hidden albums.");
+        return albumList;
     }
 }
