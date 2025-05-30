@@ -1,16 +1,33 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    android:orientation="vertical"
-    android:background="@drawable/bg_photo_item"
-    android:elevation="4dp"
-    android:padding="8dp">
-
-    <ImageView
-        android:id="@+id/iv_photo"
-        android:layout_width="match_parent"
-        android:layout_height="150dp"
-        android:scaleType="centerCrop"
-        android:contentDescription="Ảnh" />
-</LinearLayout>
+    android:layout_margin="4dp"> <ImageView
+    android:id="@+id/iv_photo"
+    android:layout_width="match_parent"
+    android:layout_height="120dp" android:scaleType="centerCrop"
+    android:contentDescription="Ảnh trong album"
+    android:background="?attr/colorSurfaceContainerHighest"/> <ImageButton
+    android:id="@+id/btn_delete_single_photo"
+    android:layout_width="36dp"
+    android:layout_height="36dp"
+    android:layout_gravity="top|end"
+    android:layout_margin="4dp"
+    android:src="@drawable/ic_delete_photo"
+    android:background="?attr/selectableItemBackgroundBorderless"
+    app:tint="?attr/colorError"
+    android:contentDescription="Xóa ảnh này"
+    android:padding="4dp"/>
+    <ImageButton
+        android:id="@+id/btn_toggle_favorite_in_list"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="4dp"
+        android:src="@drawable/ic_favorite_border_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="?attr/colorControlNormal"
+        android:contentDescription="Yêu thích"
+        android:padding="4dp"
+        android:visibility="gone"/> </FrameLayout>

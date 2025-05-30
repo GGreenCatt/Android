@@ -2,6 +2,7 @@ package com.example.de2;
 
 import android.app.Activity;
 import android.content.Intent;
+// Các import của bạn đã khá đầy đủ
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
@@ -15,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable; // Thêm cho onActivityResult nếu bạn dùng cách cũ cho ViewPhotoActivity
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -31,19 +33,24 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class HienThiAlbum extends AppCompatActivity {
+// THÊM implements PhotoAdapter.OnPhotoActionListener
+public class HienThiAlbum extends AppCompatActivity implements PhotoAdapter.OnPhotoActionListener {
     private static final String TAG = "HienThiAlbum";
     private int albumId;
     private String albumName;
     private DatabaseHelper databaseHelper;
     private RecyclerView recyclerView;
-    private PhotoAdapter photoAdapter;
+    private PhotoAdapter photoAdapter; // PhotoAdapter bây giờ sẽ có thể gọi lại các phương thức trong interface
     private List<Photo> photoList;
 
     private MaterialToolbar toolbar;
-    private MaterialButton btnAddPhoto, btnDeleteAlbum; // Giữ lại nếu layout của bạn có các nút này
+    private MaterialButton btnAddPhoto, btnDeleteAlbum;
 
     private ActivityResultLauncher<Intent> pickImageLauncher;
+    // (Tùy chọn) Nếu ViewPhotoActivity trả kết quả về đây
+    private ActivityResultLauncher<Intent> viewPhotoLauncher;
+    public static final int VIEW_PHOTO_REQUEST_CODE = 301; // Ví dụ request code
+
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     @Override
@@ -53,7 +60,7 @@ public class HienThiAlbum extends AppCompatActivity {
 
         toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recycler_view_photos);
-        btnAddPhoto = findViewById(R.id.btnAddPhoto);
+        btnAddPhoto = findViewById(R.id.btnAddPhoto); // Đảm bảo các ID này có trong layout của bạn
         btnDeleteAlbum = findViewById(R.id.btnDeleteAlbum);
 
         setSupportActionBar(toolbar);
@@ -79,30 +86,28 @@ public class HienThiAlbum extends AppCompatActivity {
         }
 
         photoList = new ArrayList<>();
+        // Truyền "this" (HienThiAlbum context) vào PhotoAdapter, vì HienThiAlbum đã implement OnPhotoActionListener
         photoAdapter = new PhotoAdapter(this, photoList);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
         recyclerView.setAdapter(photoAdapter);
 
-        // loadPhotos() sẽ được gọi trong onResume, nên có thể bỏ qua ở đây để tránh gọi thừa ban đầu
-        // nếu bạn muốn, hoặc giữ lại nếu muốn tải ngay khi tạo.
-        // loadPhotos();
-
+        // loadPhotos() sẽ được gọi trong onResume()
+        // Nếu các nút này không có trong layout activity_hien_thi_album.xml thì bạn có thể xóa
         if (btnAddPhoto != null && btnDeleteAlbum != null) {
             setupButtons();
         }
         setupImagePickerLauncher();
+        setupViewPhotoLauncher(); // Đăng ký launcher cho ViewPhotoActivity
     }
 
     private void loadPhotos() {
         Log.d(TAG, "Đang tải ảnh cho albumId: " + albumId);
-        // KHÔNG gọi photoList.clear() ở đây nữa
-
         executorService.execute(() -> {
             final List<Photo> tempPhotoList = new ArrayList<>();
-            SQLiteDatabase db = databaseHelper.getReadableDatabase(); // Nên lấy instance ở đây
+            // SQLiteDatabase db = databaseHelper.getReadableDatabase(); // Không cần thiết nếu dbHelper.getReadableDatabase() đã được gọi bên trong hàm của nó
             final String query = "SELECT id, image, " + DatabaseHelper.COLUMN_PHOTO_IS_FAVORITE +
                     " FROM photos WHERE album_id = ? ORDER BY id DESC";
-            Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(albumId)});
+            Cursor cursor = databaseHelper.getReadableDatabase().rawQuery(query, new String[]{String.valueOf(albumId)});
 
             if (cursor != null) {
                 try {
@@ -125,20 +130,18 @@ public class HienThiAlbum extends AppCompatActivity {
             } else {
                 Log.e(TAG, "Cursor rỗng khi tải ảnh cho albumId: " + albumId);
             }
-            // Không đóng db ở đây nếu databaseHelper quản lý kết nối
 
             runOnUiThread(() -> {
-                photoList.clear(); // ✅ DI CHUYỂN clear() VÀO ĐÂY
+                photoList.clear();
                 photoList.addAll(tempPhotoList);
                 photoAdapter.notifyDataSetChanged();
                 Log.d(TAG, "Đã tải " + photoList.size() + " ảnh cho album: " + albumName);
                 if (photoList.isEmpty() && !isFinishing()) {
-                    Toast.makeText(HienThiAlbum.this, "Album này chưa có ảnh nào.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(HienThiAlbum.this, "Album này chưa có ảnh nào. Hãy thêm ảnh!", Toast.LENGTH_SHORT).show();
                 }
             });
         });
     }
-
 
     private void setupButtons() {
         btnAddPhoto.setOnClickListener(v -> {
@@ -168,7 +171,7 @@ public class HienThiAlbum extends AppCompatActivity {
                 if (success) {
                     Toast.makeText(HienThiAlbum.this, "Album '" + albumName + "' đã được xóa.", Toast.LENGTH_SHORT).show();
                     Intent resultIntent = new Intent();
-                    setResult(Activity.RESULT_OK, resultIntent);
+                    setResult(Activity.RESULT_OK, resultIntent); // Báo cho DanhMucAnh cập nhật
                     finish();
                 } else {
                     Toast.makeText(HienThiAlbum.this, "Lỗi khi xóa album.", Toast.LENGTH_SHORT).show();
@@ -177,7 +180,6 @@ public class HienThiAlbum extends AppCompatActivity {
             });
         });
     }
-
 
     private void setupImagePickerLauncher() {
         pickImageLauncher = registerForActivityResult(
@@ -193,6 +195,7 @@ public class HienThiAlbum extends AppCompatActivity {
                                     runOnUiThread(() -> {
                                         if (success) {
                                             Toast.makeText(HienThiAlbum.this, "Ảnh đã được thêm!", Toast.LENGTH_SHORT).show();
+                                            setResult(Activity.RESULT_OK); // Báo cho DanhMucAnh biết có thay đổi (tổng số ảnh)
                                             loadPhotos(); // Tải lại danh sách để hiển thị ảnh mới
                                         } else {
                                             Toast.makeText(HienThiAlbum.this, "Lỗi khi thêm ảnh.", Toast.LENGTH_SHORT).show();
@@ -206,6 +209,24 @@ public class HienThiAlbum extends AppCompatActivity {
                     }
                 });
     }
+
+    // Đăng ký launcher để nhận kết quả từ ViewPhotoActivity (nếu trạng thái yêu thích thay đổi)
+    private void setupViewPhotoLauncher() {
+        viewPhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        // Có thể có data trả về từ ViewPhotoActivity nếu bạn muốn xử lý cụ thể
+                        // Ví dụ: result.getData().getIntExtra("PHOTO_ID_UPDATED", -1);
+                        Log.d(TAG, "ViewPhotoActivity trả về RESULT_OK, có thể trạng thái yêu thích đã thay đổi. Tải lại ảnh.");
+                        loadPhotos(); // Tải lại để cập nhật trạng thái yêu thích (nếu có thay đổi)
+                    }
+                }
+        );
+    }
+    // Trong PhotoAdapter, khi mở ViewPhotoActivity, bạn sẽ dùng viewPhotoLauncher.launch(intent);
+    // Và ViewPhotoActivity cần setResult(Activity.RESULT_OK) khi trạng thái yêu thích thay đổi.
+
 
     private byte[] getImageBytesFromUri(Uri imageUri) {
         try (InputStream inputStream = getContentResolver().openInputStream(imageUri);
@@ -232,17 +253,47 @@ public class HienThiAlbum extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
+            // Nếu có thay đổi dữ liệu (ví dụ xóa ảnh) thì kết quả đã được đặt là RESULT_OK
+            // Nếu không, người dùng chỉ nhấn back, không cần làm gì thêm trước khi finish.
             finish();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
+    // --- IMPLEMENT PHƯƠNG THỨC CỦA OnPhotoActionListener ---
+    @Override
+    public void onPhotoDeleted() {
+        Log.d(TAG, "HienThiAlbum: onPhotoDeleted callback. Tải lại danh sách ảnh.");
+        setResult(Activity.RESULT_OK); // Báo cho DanhMucAnh có thay đổi để cập nhật tổng số ảnh
+        loadPhotos(); // Tải lại danh sách ảnh của album hiện tại
+    }
+
+    @Override
+    public void onPhotoFavoriteChanged(int photoId, boolean isFavorite) {
+        Log.d(TAG, "HienThiAlbum: onPhotoFavoriteChanged callback. PhotoID: " + photoId + ", IsFavorite: " + isFavorite);
+        // Trạng thái yêu thích của một ảnh trong danh sách đã thay đổi.
+        // Cập nhật lại item đó trong RecyclerView hoặc tải lại toàn bộ danh sách.
+        // Cách đơn giản là tải lại:
+        // loadPhotos(); // Hoặc tìm item và cập nhật trạng thái isFavorite của nó rồi notifyItemChanged
+
+        // Quan trọng: Báo cho các Activity khác (ví dụ: FavoritePhotosActivity, ViewPhotoActivity nếu nó cũng lắng nghe)
+        // rằng có thể có thay đổi về trạng thái yêu thích.
+        // Cách đơn giản nhất là để các Activity đó tự cập nhật trong onResume của chúng.
+        // Hoặc nếu bạn mở ViewPhotoActivity từ đây bằng launcher, nó sẽ tự cập nhật khi quay lại.
+        setResult(Activity.RESULT_OK); // Báo hiệu có thay đổi chung
+    }
+    // --- KẾT THÚC IMPLEMENT ---
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+        }
+        // Gọi shutdownExecutor của adapter nếu bạn đã thêm phương thức đó
+        if (photoAdapter != null) {
+            photoAdapter.shutdownExecutor();
         }
     }
 }
