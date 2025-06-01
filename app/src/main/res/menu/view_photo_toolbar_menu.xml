@@ -4,7 +4,12 @@
 
     <item
         android:id="@+id/action_toggle_favorite"
-        android:icon="@drawable/ic_favorite_border_24" android:title="Yêu thích"
+        android:icon="@drawable/ic_favorite_border_24"
+        android:title="Yêu thích"
         app:showAsAction="ifRoom" />
 
+    <item
+        android:id="@+id/action_edit_photo"
+        android:title="Sửa tên ảnh"
+        app:showAsAction="never" />
 </menu>

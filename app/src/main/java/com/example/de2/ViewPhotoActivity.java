@@ -2,39 +2,30 @@ package com.example.de2;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
+// ... các import khác
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.Menu; // Thêm import cho Menu
-import android.view.MenuInflater; // Thêm import cho MenuInflater
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.EditText; // Sẽ là TextInputEditText nếu dùng TextInputLayout
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull; // Thêm import
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager; // Giữ lại nếu dùng cho comments
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.appbar.MaterialToolbar;
-// import com.google.android.material.button.MaterialButton; // Không thấy sử dụng trong code bạn gửi gần nhất
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +36,7 @@ public class ViewPhotoActivity extends AppCompatActivity {
     private static final String TAG = "ViewPhotoActivity";
 
     private ImageView imageView;
-    private EditText edtComment;
+    private EditText edtComment; // Sẽ là TextInputEditText nếu dùng TextInputLayout trong XML
     private ImageButton btnSendComment;
     private RecyclerView commentsRecyclerView;
     private MaterialToolbar toolbar;
@@ -54,22 +45,25 @@ public class ViewPhotoActivity extends AppCompatActivity {
     private CommentAdapter commentAdapter;
     private DatabaseHelper dbHelper;
     private int photoId = -1;
-    private boolean isCurrentPhotoFavorite = false; // Biến lưu trạng thái yêu thích hiện tại
+    private Photo currentPhotoObject; // Để lưu trữ thông tin ảnh, bao gồm cả tên
+    private boolean isCurrentPhotoFavorite = false;
 
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    // Giả sử bạn có một đối tượng Photo đầy đủ được truyền hoặc tải
-    // private Photo currentPhotoObject; // Sẽ tốt hơn nếu có đối tượng Photo đầy đủ
+    // Launcher để mở EditPhotoActivity
+    private ActivityResultLauncher<Intent> editPhotoLauncher;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_view_photo); // Đảm bảo layout này đã có app:menu cho toolbar
+        setContentView(R.layout.activity_view_photo);
 
         toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            // Tiêu đề sẽ được đặt sau khi tải chi tiết ảnh
         }
 
         imageView = findViewById(R.id.imageView);
@@ -81,7 +75,8 @@ public class ViewPhotoActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         photoId = intent.getIntExtra("PHOTO_ID", -1);
-        byte[] imageBytes = intent.getByteArrayExtra("PHOTO_IMAGE_DATA");
+        // Không cần lấy imageBytes ở đây nữa nếu getPhotoById trả về cả ảnh
+        // byte[] imageBytes = intent.getByteArrayExtra("PHOTO_IMAGE_DATA");
 
         if (photoId == -1) {
             Toast.makeText(this, "Lỗi: Không tìm thấy ID ảnh.", Toast.LENGTH_LONG).show();
@@ -89,37 +84,43 @@ public class ViewPhotoActivity extends AppCompatActivity {
             finish();
             return;
         }
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Ảnh ID: " + photoId);
-        }
 
-        if (imageBytes != null) {
-            Glide.with(this)
-                    .load(imageBytes)
-                    .placeholder(R.drawable.ic_placeholder_album)
-                    .error(R.drawable.ic_placeholder_album)
-                    .into(imageView);
-        } else {
-            Log.w(TAG, "Không có dữ liệu ảnh (imageBytes is null) cho photoId: " + photoId + ". Đang thử tải từ DB.");
-            // Nếu không truyền imageBytes, thử tải ảnh từ DB dựa trên photoId (cần hàm trong DB helper)
-            // loadPhotoDataFromDb(photoId); // Bạn cần tạo hàm này nếu muốn
-            imageView.setImageResource(R.drawable.ic_placeholder_album); // Tạm thời
-        }
+        // Đăng ký editPhotoLauncher
+        editPhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Intent data = result.getData();
+                        int updatedPhotoId = data.getIntExtra("UPDATED_PHOTO_ID", -1);
+                        String updatedPhotoName = data.getStringExtra("UPDATED_PHOTO_NAME");
 
-        // Tải trạng thái yêu thích ban đầu
-        loadFavoriteStatus();
+                        if (updatedPhotoId == photoId && updatedPhotoName != null) {
+                            Log.d(TAG, "Tên ảnh đã được cập nhật: " + updatedPhotoName);
+                            if (currentPhotoObject != null) {
+                                currentPhotoObject.setName(updatedPhotoName);
+                            }
+                            if (getSupportActionBar() != null) {
+                                getSupportActionBar().setTitle(updatedPhotoName); // Cập nhật tiêu đề toolbar
+                            }
+                            Toast.makeText(this, "Thông tin ảnh đã được cập nhật.", Toast.LENGTH_SHORT).show();
+                            // Báo cho HienThiAlbum là có thay đổi
+                            setResult(Activity.RESULT_OK);
+                        }
+                    }
+                });
+
+        loadPhotoDetailsAndComments(); // Tải cả chi tiết ảnh và bình luận
 
         commentsList = new ArrayList<>();
         commentAdapter = new CommentAdapter(this, commentsList);
         commentsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         commentsRecyclerView.setAdapter(commentAdapter);
 
-        loadCommentsFromDb();
 
         btnSendComment.setOnClickListener(v -> {
             String commentText = edtComment.getText().toString().trim();
             if (!TextUtils.isEmpty(commentText)) {
-                addNewComment(photoId, commentText, "Khách");
+                addNewComment(photoId, commentText, "Khách"); // Giả sử tác giả là "Khách"
                 edtComment.setText("");
             } else {
                 Toast.makeText(ViewPhotoActivity.this, "Vui lòng nhập bình luận.", Toast.LENGTH_SHORT).show();
@@ -127,16 +128,42 @@ public class ViewPhotoActivity extends AppCompatActivity {
         });
     }
 
-    private void loadFavoriteStatus() {
+    private void loadPhotoDetailsAndComments() {
         if (photoId != -1) {
             executorService.execute(() -> {
-                // Giả sử DatabaseHelper có phương thức isPhotoFavorite(photoId)
-                // Hoặc bạn tải toàn bộ đối tượng Photo và lấy isFavorite từ đó
-                final boolean favorite = dbHelper.isPhotoFavorite(photoId); // BẠN CẦN TẠO HÀM NÀY TRONG DBHELPER
+                currentPhotoObject = dbHelper.getPhotoById(photoId);
+                final List<Comment> loadedComments = dbHelper.getCommentsForPhoto(photoId);
+
                 runOnUiThread(() -> {
-                    isCurrentPhotoFavorite = favorite;
-                    invalidateOptionsMenu(); // Gọi để vẽ lại menu với icon đúng
-                    Log.d(TAG, "Trạng thái yêu thích ban đầu cho photoId " + photoId + ": " + isCurrentPhotoFavorite);
+                    if (currentPhotoObject != null) {
+                        isCurrentPhotoFavorite = currentPhotoObject.isFavorite();
+                        if (getSupportActionBar() != null) {
+                            getSupportActionBar().setTitle(currentPhotoObject.getName()); // Đặt tiêu đề
+                        }
+                        if (currentPhotoObject.getImage() != null && currentPhotoObject.getImage().length > 0) {
+                            Glide.with(ViewPhotoActivity.this)
+                                    .load(currentPhotoObject.getImage())
+                                    .placeholder(R.drawable.ic_placeholder_album)
+                                    .error(R.drawable.ic_placeholder_album)
+                                    .into(imageView);
+                        } else {
+                            imageView.setImageResource(R.drawable.ic_placeholder_album);
+                        }
+                        invalidateOptionsMenu(); // Cập nhật icon yêu thích
+                        Log.d(TAG, "Đã tải chi tiết ảnh: " + currentPhotoObject.getName());
+                    } else {
+                        Toast.makeText(this, "Không thể tải chi tiết ảnh.", Toast.LENGTH_SHORT).show();
+                        finish(); // Hoặc xử lý lỗi khác
+                        return;
+                    }
+
+                    commentsList.clear();
+                    commentsList.addAll(loadedComments);
+                    commentAdapter.notifyDataSetChanged();
+                    if (!commentsList.isEmpty()) {
+                        commentsRecyclerView.smoothScrollToPosition(commentsList.size() - 1);
+                    }
+                    Log.d(TAG, "Đã tải " + commentsList.size() + " bình luận.");
                 });
             });
         }
@@ -146,7 +173,7 @@ public class ViewPhotoActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.view_photo_toolbar_menu, menu); // Inflate menu của bạn
+        inflater.inflate(R.menu.view_photo_toolbar_menu, menu);
         return true;
     }
 
@@ -155,11 +182,9 @@ public class ViewPhotoActivity extends AppCompatActivity {
         MenuItem favoriteItem = menu.findItem(R.id.action_toggle_favorite);
         if (favoriteItem != null) {
             if (isCurrentPhotoFavorite) {
-                favoriteItem.setIcon(R.drawable.ic_favorite_filled_24); // Icon trái tim đầy
-                // favoriteItem.getIcon().setTint(ContextCompat.getColor(this, R.color.your_favorite_color)); // Tùy chọn màu
+                favoriteItem.setIcon(R.drawable.ic_favorite_filled_24);
             } else {
-                favoriteItem.setIcon(R.drawable.ic_favorite_border_24); // Icon trái tim rỗng
-                // favoriteItem.getIcon().setTint(ContextCompat.getColor(this, R.color.your_default_icon_color)); // Tùy chọn màu
+                favoriteItem.setIcon(R.drawable.ic_favorite_border_24);
             }
         }
         return super.onPrepareOptionsMenu(menu);
@@ -169,10 +194,20 @@ public class ViewPhotoActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == android.R.id.home) {
-            onBackPressed();
+            // setResult(Activity.RESULT_OK); // Đảm bảo HienThiAlbum cập nhật nếu có thay đổi (ví dụ yêu thích)
+            finish();
             return true;
         } else if (itemId == R.id.action_toggle_favorite) {
             toggleFavoriteStatus();
+            return true;
+        } else if (itemId == R.id.action_edit_photo) {
+            if (currentPhotoObject != null) {
+                Intent editIntent = new Intent(this, EditPhotoActivity.class);
+                editIntent.putExtra("PHOTO_ID_TO_EDIT", currentPhotoObject.getId());
+                editPhotoLauncher.launch(editIntent);
+            } else {
+                Toast.makeText(this, "Không thể sửa, chi tiết ảnh chưa được tải.", Toast.LENGTH_SHORT).show();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -187,41 +222,24 @@ public class ViewPhotoActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 if (success) {
                     isCurrentPhotoFavorite = newFavoriteState;
-                    invalidateOptionsMenu(); // Yêu cầu vẽ lại menu để cập nhật icon
+                    if (currentPhotoObject != null) {
+                        currentPhotoObject.setFavorite(newFavoriteState);
+                    }
+                    invalidateOptionsMenu();
                     String message = isCurrentPhotoFavorite ? "Đã thêm vào yêu thích" : "Đã xóa khỏi yêu thích";
                     Toast.makeText(ViewPhotoActivity.this, message, Toast.LENGTH_SHORT).show();
                     Log.d(TAG, "Đã cập nhật trạng thái yêu thích cho photoId " + photoId + " thành " + isCurrentPhotoFavorite);
-
-                    // (Tùy chọn) Gửi kết quả về cho Activity trước đó nếu cần thiết
-                    // Intent resultIntent = new Intent();
-                    // resultIntent.putExtra("PHOTO_ID_UPDATED", photoId);
-                    // resultIntent.putExtra("NEW_FAVORITE_STATUS", isCurrentPhotoFavorite);
-                    // setResult(Activity.RESULT_OK, resultIntent);
-
+                    setResult(Activity.RESULT_OK); // Báo cho HienThiAlbum cập nhật
                 } else {
                     Toast.makeText(ViewPhotoActivity.this, "Lỗi cập nhật yêu thích.", Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Lỗi khi cập nhật trạng thái yêu thích cho photoId " + photoId);
                 }
             });
         });
     }
 
 
-    private void loadCommentsFromDb() {
-        Log.d(TAG, "Đang tải bình luận cho photoId: " + photoId);
-        if (photoId == -1) return;
-        executorService.execute(() -> {
-            final List<Comment> loadedComments = dbHelper.getCommentsForPhoto(photoId);
-            runOnUiThread(() -> {
-                commentsList.clear();
-                commentsList.addAll(loadedComments);
-                commentAdapter.notifyDataSetChanged();
-                if (!commentsList.isEmpty()) {
-                    commentsRecyclerView.scrollToPosition(commentsList.size() - 1);
-                }
-                Log.d(TAG, "Đã tải " + commentsList.size() + " bình luận từ DB.");
-            });
-        });
+    private void loadCommentsFromDb() { // Sẽ được gọi bên trong loadPhotoDetailsAndComments
+        // ... (Đã tích hợp vào loadPhotoDetailsAndComments) ...
     }
 
     private void addNewComment(int currentPhotoId, String text, String author) {
@@ -229,13 +247,18 @@ public class ViewPhotoActivity extends AppCompatActivity {
         if (currentPhotoId == -1) return;
         executorService.execute(() -> {
             final boolean success = dbHelper.addComment(currentPhotoId, text, author);
+            final List<Comment> updatedComments = success ? dbHelper.getCommentsForPhoto(currentPhotoId) : commentsList;
             runOnUiThread(() -> {
                 if (success) {
                     Toast.makeText(ViewPhotoActivity.this, "Đã thêm bình luận!", Toast.LENGTH_SHORT).show();
-                    loadCommentsFromDb();
+                    commentsList.clear();
+                    commentsList.addAll(updatedComments);
+                    commentAdapter.notifyDataSetChanged();
+                    if (!commentsList.isEmpty()) {
+                        commentsRecyclerView.smoothScrollToPosition(commentsList.size() - 1);
+                    }
                 } else {
                     Toast.makeText(ViewPhotoActivity.this, "Lỗi khi thêm bình luận.", Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Không thể thêm bình luận vào DB cho photoId: " + currentPhotoId);
                 }
             });
         });
@@ -244,11 +267,12 @@ public class ViewPhotoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume: Tải lại dữ liệu.");
-        // Tải lại trạng thái yêu thích và bình luận khi quay lại màn hình
-        // để đảm bảo dữ liệu luôn mới (ví dụ nếu trạng thái yêu thích được thay đổi từ nơi khác)
-        loadFavoriteStatus();
-        loadCommentsFromDb();
+        Log.d(TAG, "onResume: Tải lại chi tiết ảnh và bình luận (nếu cần).");
+        // Cân nhắc việc có cần tải lại toàn bộ ở đây không,
+        // vì EditPhotoActivity và toggleFavorite đã setResult(OK) để HienThiAlbum cập nhật
+        // Nếu ViewPhotoActivity là top, thì không cần tải lại trừ khi có thay đổi từ nguồn khác
+        // Tuy nhiên, để đảm bảo, có thể gọi lại loadPhotoDetailsAndComments()
+        // loadPhotoDetailsAndComments();
     }
 
     @Override
