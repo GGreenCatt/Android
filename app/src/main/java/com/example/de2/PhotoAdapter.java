@@ -85,24 +85,11 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.PhotoViewHol
         holder.ivPhoto.setOnClickListener(v -> {
             Intent intent = new Intent(context, ViewPhotoActivity.class);
             intent.putExtra("PHOTO_ID", currentPhoto.getId());
-            // Không cần truyền PHOTO_IMAGE_DATA nếu ViewPhotoActivity tự tải dựa trên ID
-            // intent.putExtra("PHOTO_IMAGE_DATA", currentPhoto.getImage());
 
-            // Sử dụng launcher nếu bạn muốn nhận kết quả cụ thể từ ViewPhotoActivity
-            // Nếu không, onResume của FavoritePhotosActivity sẽ xử lý cập nhật
             if (context instanceof Activity) {
-                // Nếu FavoritePhotosActivity hoặc HienThiAlbum mở ViewPhotoActivity,
-                // chúng có thể dùng launcher riêng hoặc dựa vào onResume để refresh.
-                // Hiện tại, onResume đang là cơ chế chính để refresh khi quay lại.
+
                 ((Activity) context).startActivity(intent);
-                // Ví dụ nếu dùng launcher:
-                // if (context instanceof FavoritePhotosActivity) {
-                //    ((FavoritePhotosActivity) context).getViewPhotoLauncher().launch(intent);
-                // } else if (context instanceof HienThiAlbum) {
-                //    ((HienThiAlbum) context).getViewPhotoLauncher().launch(intent);
-                // } else {
-                //    context.startActivity(intent);
-                // }
+
             } else {
                 context.startActivity(intent);
             }
@@ -145,11 +132,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.PhotoViewHol
                         if (actionListener != null) {
                             actionListener.onPhotoFavoriteChanged(photo.getId(), newFavoriteState);
                         } else {
-                            // Chỉ gọi notifyItemChanged nếu không có listener hoặc listener không xử lý việc xóa item
-                            // (Trong trường hợp của FavoritePhotosActivity, listener sẽ xử lý xóa)
-                            // (Trong trường hợp của HienThiAlbum, listener sẽ gọi loadPhotos)
-                            // Vì vậy, thường không cần gọi notifyItemChanged(position) ở đây nếu listener tồn tại.
-                            // Tuy nhiên, nếu không có listener, việc này cần thiết để cập nhật icon.
+
                             notifyItemChanged(position); // Để cập nhật icon nếu listener không làm gì khác
                         }
                     } else {

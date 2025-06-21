@@ -20,13 +20,11 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
     private List<Comment> commentList; // Sửa: Bỏ dấu chấm phẩy thừa và đảm bảo kiểu là List<Comment>
     private SimpleDateFormat dateFormat; // Tùy chọn: để định dạng ngày giờ
 
-    // SỬA Ở ĐÂY: Thay đổi kiểu dữ liệu của tham số commentList
+
     public CommentAdapter(Context context, List<Comment> commentList) {
         this.context = context;
         this.commentList = commentList;
-        // Tùy chọn: Khởi tạo SimpleDateFormat nếu bạn muốn hiển thị timestamp
-        // Ví dụ: "HH:mm dd/MM/yyyy"
-        // this.dateFormat = new SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault());
+
     }
 
     @NonNull
@@ -50,14 +48,7 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
 
         holder.tvCommentText.setText(author + ": " + text);
 
-        // Nếu bạn muốn hiển thị cả timestamp và đã thêm TextView cho nó trong item_comment_simple.xml
-        // (ví dụ: TextView có id là tvCommentTimestamp) và đã khởi tạo dateFormat:
-        // if (comment.getTimestamp() > 0 && holder.tvCommentTimestamp != null && dateFormat != null) {
-        //    holder.tvCommentTimestamp.setVisibility(View.VISIBLE);
-        //    holder.tvCommentTimestamp.setText(dateFormat.format(new Date(comment.getTimestamp())));
-        // } else if (holder.tvCommentTimestamp != null) {
-        //    holder.tvCommentTimestamp.setVisibility(View.GONE);
-        // }
+
     }
 
     @Override
@@ -67,15 +58,12 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
 
     static class CommentViewHolder extends RecyclerView.ViewHolder {
         TextView tvCommentText;
-        // TextView tvCommentAuthor; // Nếu bạn tách riêng TextView cho tác giả
-        // TextView tvCommentTimestamp; // Nếu bạn có TextView cho thời gian
 
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
             // Đảm bảo ID này khớp với ID trong file item_comment_simple.xml
             tvCommentText = itemView.findViewById(R.id.tvCommentText);
-            // tvCommentAuthor = itemView.findViewById(R.id.tvCommentAuthor); // Nếu có
-            // tvCommentTimestamp = itemView.findViewById(R.id.tvCommentTimestamp); // Nếu có
+
         }
     }
 }

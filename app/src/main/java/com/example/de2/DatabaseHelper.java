@@ -80,8 +80,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
 
-        // It's good practice to make upgrade steps idempotent.
-        // The columnExists helper can be used, or simply try-catch ALTER TABLE.
+
 
         if (oldVersion < 5) {
             Log.d(TAG, "Applying upgrades for DB version < 5");
@@ -105,7 +104,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     Log.e(TAG, "Error adding " + COLUMN_ALBUM_IS_HIDDEN + " to " + TABLE_ALBUMS, e);
                 }
             }
-            // This is the critical column from your error log
+
             if (!columnExists(db, TABLE_PHOTOS, COLUMN_PHOTO_NAME)) {
                 try {
                     db.execSQL("ALTER TABLE " + TABLE_PHOTOS + " ADD COLUMN " + COLUMN_PHOTO_NAME + " TEXT;");
@@ -116,11 +115,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
         }
 
-        // Add more "if (oldVersion < X)" blocks here for future schema changes
-        // Example for version 7, though we are using it here to ensure version 6 changes apply
+
         if (oldVersion < 7) {
             Log.d(TAG, "Applying upgrades for DB version < 7 (includes safeguards for earlier versions)");
-            // Safeguard: Re-check critical columns if upgrading from a version that should have had them
             if (!columnExists(db, TABLE_PHOTOS, COLUMN_PHOTO_NAME)) {
                 Log.w(TAG, "Safeguard: Column " + COLUMN_PHOTO_NAME + " was missing. Adding it now.");
                 try {
@@ -147,9 +144,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 }
             }
         }
-        // Note: If onUpgrade becomes very complex or if an ALTER TABLE fails catastrophically,
-        // you might consider a fallback like dropping and recreating tables, but this loses data.
-        // For this specific error, ensuring the ALTER TABLE for COLUMN_PHOTO_NAME executes is key.
+
     }
 
     /**
@@ -162,14 +157,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private boolean columnExists(SQLiteDatabase db, String tableName, String columnName) {
         Cursor cursor = null;
         try {
-            // Query with LIMIT 0 to check schema without fetching data
             cursor = db.query(tableName, null, null, null, null, null, null, "0");
-            // cursor = db.rawQuery("SELECT * FROM " + tableName + " LIMIT 0", null); // Alternative way
             if (cursor != null) {
                 return cursor.getColumnIndex(columnName) != -1;
             }
         } catch (Exception e) {
-            // This can happen if the table itself doesn't exist, which is fine in some onUpgrade scenarios
             Log.d(TAG, "columnExists: Error checking column " + columnName + " in " + tableName + " (may be expected if table is new): " + e.getMessage());
             return false;
         } finally {
@@ -188,9 +180,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    // ... (rest of your DatabaseHelper methods: insertAlbum, insertImage, getPhotoById, etc.)
-    // Ensure these methods are consistent with the column names defined above.
-    // For example, getPhotoById and any method reading from 'photos' should expect 'COLUMN_PHOTO_NAME'.
+
 
     public boolean insertAlbum(String name, String topic, byte[] image, boolean isHidden) {
         SQLiteDatabase db = this.getWritableDatabase();

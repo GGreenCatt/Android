@@ -15,17 +15,16 @@ public class Album {
         this.name = name;
         this.topic = topic;
         this.image = image;
-        this.isHidden = false; // Mặc định khi tạo mới một đối tượng Album (không từ DB)
-        // hoặc khi chưa có thông tin ẩn, album sẽ không bị ẩn.
+        this.isHidden = false;
+
     }
 
-    // (Tùy chọn) Constructor đầy đủ hơn, bao gồm cả isHidden (hữu ích khi tạo từ database)
     public Album(int id, String name, String topic, byte[] image, boolean isHidden) {
         this.id = id;
         this.name = name;
         this.topic = topic;
         this.image = image;
-        this.isHidden = isHidden; // Gán trạng thái ẩn được truyền vào
+        this.isHidden = isHidden;
     }
 
     // Getter và Setter
@@ -33,7 +32,7 @@ public class Album {
         return id;
     }
 
-    public void setId(int id) { // Thêm setter cho id nếu cần
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -41,7 +40,7 @@ public class Album {
         return name;
     }
 
-    public void setName(String name) { // Thêm setter cho name nếu cần
+    public void setName(String name) {
         this.name = name;
     }
 
@@ -49,7 +48,7 @@ public class Album {
         return topic;
     }
 
-    public void setTopic(String topic) { // Thêm setter cho topic nếu cần
+    public void setTopic(String topic) {
         this.topic = topic;
     }
 

@@ -75,8 +75,7 @@ public class ViewPhotoActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         photoId = intent.getIntExtra("PHOTO_ID", -1);
-        // Không cần lấy imageBytes ở đây nữa nếu getPhotoById trả về cả ảnh
-        // byte[] imageBytes = intent.getByteArrayExtra("PHOTO_IMAGE_DATA");
+
 
         if (photoId == -1) {
             Toast.makeText(this, "Lỗi: Không tìm thấy ID ảnh.", Toast.LENGTH_LONG).show();
@@ -239,7 +238,6 @@ public class ViewPhotoActivity extends AppCompatActivity {
 
 
     private void loadCommentsFromDb() { // Sẽ được gọi bên trong loadPhotoDetailsAndComments
-        // ... (Đã tích hợp vào loadPhotoDetailsAndComments) ...
     }
 
     private void addNewComment(int currentPhotoId, String text, String author) {
@@ -268,11 +266,7 @@ public class ViewPhotoActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume: Tải lại chi tiết ảnh và bình luận (nếu cần).");
-        // Cân nhắc việc có cần tải lại toàn bộ ở đây không,
-        // vì EditPhotoActivity và toggleFavorite đã setResult(OK) để HienThiAlbum cập nhật
-        // Nếu ViewPhotoActivity là top, thì không cần tải lại trừ khi có thay đổi từ nguồn khác
-        // Tuy nhiên, để đảm bảo, có thể gọi lại loadPhotoDetailsAndComments()
-        // loadPhotoDetailsAndComments();
+
     }
 
     @Override

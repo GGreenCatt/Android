@@ -43,8 +43,7 @@ public class HienThiAlbum extends AppCompatActivity implements PhotoAdapter.OnPh
 
     // Launcher để mở ThemAnh Activity
     private ActivityResultLauncher<Intent> addPhotoLauncher;
-    // Launcher cũ pickImageLauncher không còn dùng trực tiếp ở đây nữa
-    // private ActivityResultLauncher<Intent> pickImageLauncher;
+
 
 
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -99,8 +98,6 @@ public class HienThiAlbum extends AppCompatActivity implements PhotoAdapter.OnPh
                 }
         );
 
-        // setupPickImageLauncher(); // Không dùng trực tiếp nữa
-        // setupViewPhotoLauncher(); // Vẫn giữ nếu bạn dùng launcher để mở ViewPhotoActivity
 
         if (btnAddPhoto != null) { // Chỉ setup nút thêm ảnh
             setupAddPhotoButton();
@@ -108,10 +105,10 @@ public class HienThiAlbum extends AppCompatActivity implements PhotoAdapter.OnPh
         if (btnDeleteAlbum != null) { // Chỉ setup nút xóa album
             setupDeleteAlbumButton();
         }
-        // loadPhotos(); // Gọi trong onResume
+
     }
 
-    // Bỏ phương thức setupPickImageLauncher() cũ nếu không dùng nữa
+
 
     private void setupAddPhotoButton() {
         btnAddPhoto.setOnClickListener(v -> {

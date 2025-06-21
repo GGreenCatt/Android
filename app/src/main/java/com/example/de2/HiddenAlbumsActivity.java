@@ -64,14 +64,8 @@ public class HiddenAlbumsActivity extends AppCompatActivity implements AlbumAdap
         recyclerViewHiddenAlbums.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewHiddenAlbums.setAdapter(albumAdapter);
 
-        // Nếu có FAB để tạo album ẩn mới
-        // fabCreateNewHiddenAlbum.setOnClickListener(v -> {
-        //    Intent intent = new Intent(HiddenAlbumsActivity.this, ThemDanhMuc.class);
-        //    intent.putExtra("IS_CREATING_HIDDEN_ALBUM", true); // Gửi cờ để ThemDanhMuc biết là tạo album ẩn
-        //    startActivityForResult(intent, ADD_NEW_HIDDEN_ALBUM_REQUEST_CODE); // Cần định nghĩa request code
-        // });
 
-        // loadHiddenAlbums(); // Sẽ được gọi trong onResume
+
     }
     @Override
     public void onAlbumDataChanged() {

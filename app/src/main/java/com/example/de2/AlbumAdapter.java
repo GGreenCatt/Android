@@ -34,8 +34,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
 
     public interface OnAlbumActionListener {
         void onAlbumDataChanged();
-        // (Tùy chọn) Thêm các phương thức khác nếu cần, ví dụ:
-        // void onRequestPasswordForHiding(Album albumToHide, int position);
+
     }
     private OnAlbumActionListener actionListener;
 
@@ -46,8 +45,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         if (context instanceof OnAlbumActionListener) {
             this.actionListener = (OnAlbumActionListener) context;
         } else {
-            // Throw exception hoặc Log lỗi nếu Activity không implement interface
-            // Vì các thao tác quan trọng như làm mới danh sách sẽ không hoạt động
+
             throw new RuntimeException(context.toString()
                     + " must implement OnAlbumActionListener");
         }
@@ -56,7 +54,6 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
     @NonNull
     @Override
     public AlbumViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Đảm bảo R.layout.item_album là layout đúng và có btn_album_options
         View view = LayoutInflater.from(context).inflate(R.layout.danhmuclist, parent, false);
         return new AlbumViewHolder(view);
     }
@@ -74,7 +71,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                     .load(album.getImage())
                     .placeholder(R.drawable.ic_placeholder_album)
                     .error(R.drawable.ic_placeholder_album)
-                    .centerCrop() // Thêm centerCrop để ảnh trông đẹp hơn trong ImageView cố định
+                    .centerCrop()
                     .into(holder.ivImage);
         } else {
             Glide.with(context)
@@ -95,7 +92,6 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
                 showAlbumOptionsMenu(view, album, position);
             });
         } else {
-            // Lỗi này không nên xảy ra nếu R.layout.item_album đã đúng
             Log.e(TAG, "Lỗi nghiêm trọng: btnAlbumOptions is null. Kiểm tra R.layout.item_album và ID btn_album_options.");
         }
     }
@@ -112,12 +108,7 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
         } else { // Mặc định là màn hình DanhMucAnh (album đang hiện)
             toggleHiddenItem.setTitle("Ẩn Album");
         }
-        // Nếu bạn muốn tiêu đề thay đổi dựa trên trạng thái album.isHidden() thì nên làm như sau:
-        // if (album.isHidden()) {
-        //     toggleHiddenItem.setTitle("Hiện Album");
-        // } else {
-        //     toggleHiddenItem.setTitle("Ẩn Album");
-        // }
+
 
 
         popup.setOnMenuItemClickListener(item -> {
@@ -141,8 +132,6 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.AlbumViewHol
 
             } else if (itemId == R.id.menu_album_toggle_hidden) {
                 // TODO: Cân nhắc việc kiểm tra mật khẩu cho mục ẩn ở đây.
-                // Nếu chưa có mật khẩu, Adapter nên thông báo cho Activity để yêu cầu người dùng tạo.
-                // Ví dụ: if (passwordManager.isPasswordSet()) { toggle... } else { actionListener.onRequestPasswordSetup(); }
                 toggleAlbumHiddenStatus(album, position);
                 return true;
 
